@@ -57,15 +57,6 @@ import java.io.IOException;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-private enum AppAnchorState {
-  NONE,
-  HOSTING,
-  HOSTED
-}
-
-@GuardedBy("singleTapAnchorLock")
-private AppAnchorState appAnchorState = AppAnchorState.NONE;
-
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
@@ -107,16 +98,30 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
   @GuardedBy("singleTapAnchorLock")
   private Anchor anchor;
 
+  private enum AppAnchorState {
+    NONE,
+    HOSTING,
+    HOSTED
+  }
+
+  @GuardedBy("singleTapAnchorLock")
+  private AppAnchorState appAnchorState = AppAnchorState.NONE;
+
   /** Handles a single tap during a {@link #onDrawFrame(GL10)} call. */
   private void handleTapOnDraw(TrackingState currentTrackingState, Frame currentFrame) {
     synchronized (singleTapAnchorLock) {
       if (anchor == null
           && queuedSingleTap != null
-          && currentTrackingState == TrackingState.TRACKING) {
+          && currentTrackingState == TrackingState.TRACKING
+          && appAnchorState == AppAnchorState.NONE) {
         for (HitResult hit : currentFrame.hitTest(queuedSingleTap)) {
           if (shouldCreateAnchorWithHit(hit)) {
-            Anchor newAnchor = hit.createAnchor();
+            // Create a hosted anchor from a standard anchor.
+            Anchor newAnchor = session.hostCloudAnchor(hit.createAnchor()); // Change this line.
             setNewAnchor(newAnchor);
+            // Add some UI to show you that the anchor is being hosted.
+            appAnchorState = AppAnchorState.HOSTING; // Add this line.
+            snackbarHelper.showMessage(this, "Now hosting anchor..."); // Add this line.
             break;
           }
         }
@@ -334,6 +339,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
       Frame frame = session.update();
       Camera camera = frame.getCamera();
       TrackingState cameraTrackingState = camera.getTrackingState();
+      checkUpdatedAnchor();
 
       // Handle taps.
       handleTapOnDraw(cameraTrackingState, frame);
@@ -398,5 +404,24 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
       anchor.detach();
     }
     anchor = newAnchor;
+    appAnchorState = AppAnchorState.NONE;
+    snackbarHelper.hide(this);
+  }
+
+  private void checkUpdatedAnchor() {
+    synchronized (singleTapAnchorLock) {
+      if (appAnchorState != AppAnchorState.HOSTING) {
+        return;
+      }
+      Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
+      if (cloudState.isError()) {
+        snackbarHelper.showMessageWithDismiss(this, "Error hosting anchor: " + cloudState);
+        appAnchorState = AppAnchorState.NONE;
+      } else if (cloudState == Anchor.CloudAnchorState.SUCCESS) {
+        snackbarHelper.showMessageWithDismiss(
+                this, "Anchor hosted successfully! Cloud ID: " + anchor.getCloudAnchorId());
+        appAnchorState = AppAnchorState.HOSTED;
+      }
+    }
   }
 }
