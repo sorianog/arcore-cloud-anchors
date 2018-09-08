@@ -106,6 +106,7 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
 
   @GuardedBy("singleTapAnchorLock")
   private AppAnchorState appAnchorState = AppAnchorState.NONE;
+  private final StorageManager storageManager = new StorageManager();
 
   /** Handles a single tap during a {@link #onDrawFrame(GL10)} call. */
   private void handleTapOnDraw(TrackingState currentTrackingState, Frame currentFrame) {
@@ -418,8 +419,9 @@ public class MainActivity extends AppCompatActivity implements GLSurfaceView.Ren
         snackbarHelper.showMessageWithDismiss(this, "Error hosting anchor: " + cloudState);
         appAnchorState = AppAnchorState.NONE;
       } else if (cloudState == Anchor.CloudAnchorState.SUCCESS) {
-        snackbarHelper.showMessageWithDismiss(
-                this, "Anchor hosted successfully! Cloud ID: " + anchor.getCloudAnchorId());
+        int shortCode = storageManager.nextShortCode(this);
+        storageManager.storeUsingShortCode(this, shortCode, anchor.getCloudAnchorId());
+        snackbarHelper.showMessageWithDismiss(this, "Anchor hosted successfully! Cloud Short Code: " + shortCode);
         appAnchorState = AppAnchorState.HOSTED;
       }
     }
