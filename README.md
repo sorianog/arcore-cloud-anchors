@@ -1,5 +1,7 @@
 ARCore Cloud Anchors Codelab
 =============================
+![Demo Pic](https://codelabs.developers.google.com/codelabs/arcore-cloud-anchors/img/509833dbebdc794c.png)
+
 Copyright (c) 2018 Google Inc.  All rights reserved.
 
 These are sample Android Studio projects indended for use with the Google AR Codelabs.
