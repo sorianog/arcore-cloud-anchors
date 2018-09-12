@@ -35,5 +35,10 @@
         android:layout_height="wrap_content"
         android:text="@string/clear_button_string"/>
 
+    <Button
+        android:id="@+id/resolve_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/resolve_button_text"/>
   </LinearLayout>
 </RelativeLayout>
